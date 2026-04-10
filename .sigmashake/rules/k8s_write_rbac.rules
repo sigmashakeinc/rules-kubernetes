@@ -1,0 +1,56 @@
+# k8s_write_rbac.rules — Kubernetes RBAC and service account security rules.
+# Technology: k8s | Capability: write
+# Covers: wildcard permissions, cluster-admin bindings, default service account, automounted tokens.
+
+rule no-wildcard-rbac-verbs {
+  enabled true
+  priority 95
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content CONTAINS "verbs:" AND content LINE_REGEX "verbs:\\s*\\[\\s*['\"]\\*['\"]"
+  OR path GLOB "**/*.yml" AND content CONTAINS "verbs:" AND content LINE_REGEX "verbs:\\s*\\[\\s*['\"]\\*['\"]"
+  OR path GLOB "**/*.yaml" AND content CONTAINS "- \"*\""
+  MESSAGE "Wildcard RBAC verb '*' grants unrestricted access to the resource. Specify only the verbs your workload actually needs (get, list, watch, create, update, delete)."
+}
+
+rule no-wildcard-rbac-resources {
+  enabled true
+  priority 95
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content CONTAINS "resources:" AND content LINE_REGEX "resources:\\s*\\[\\s*['\"]\\*['\"]"
+  OR path GLOB "**/*.yml" AND content CONTAINS "resources:" AND content LINE_REGEX "resources:\\s*\\[\\s*['\"]\\*['\"]"
+  MESSAGE "Wildcard resource '*' in RBAC grants access to all Kubernetes resources including secrets. Enumerate only the specific resources needed."
+}
+
+rule no-cluster-admin-binding {
+  enabled true
+  priority 100
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content CONTAINS "ClusterRoleBinding" AND content CONTAINS "cluster-admin"
+  OR path GLOB "**/*.yml" AND content CONTAINS "ClusterRoleBinding" AND content CONTAINS "cluster-admin"
+  MESSAGE "ClusterRoleBinding to cluster-admin grants full superuser access to every resource in the cluster. Use a scoped Role/RoleBinding with least-privilege permissions instead."
+}
+
+rule no-default-service-account {
+  enabled true
+  priority 75
+  severity warning
+  ASK write
+  IF path GLOB "**/*.yaml" AND content CONTAINS "serviceAccountName: default"
+  OR path GLOB "**/*.yml" AND content CONTAINS "serviceAccountName: default"
+  MESSAGE "Using the default service account. Create a dedicated service account for each workload with only the permissions it needs."
+  PROMPT "Is this workload using the 'default' service account? Create a dedicated ServiceAccount with scoped RBAC — the default account is often over-permissioned."
+}
+
+rule no-automount-service-account-token {
+  enabled true
+  priority 80
+  severity warning
+  ASK write
+  IF path GLOB "**/*.yaml" AND content CONTAINS "automountServiceAccountToken: true"
+  OR path GLOB "**/*.yml" AND content CONTAINS "automountServiceAccountToken: true"
+  MESSAGE "automountServiceAccountToken: true injects the service account token into every pod. If the workload doesn't call the Kubernetes API, set this to false to reduce the blast radius of a compromise."
+  PROMPT "Does this workload need to call the Kubernetes API? If not, set automountServiceAccountToken: false on the ServiceAccount or Pod spec."
+}

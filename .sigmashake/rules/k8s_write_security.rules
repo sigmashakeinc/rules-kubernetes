@@ -1,0 +1,65 @@
+# k8s_write_security.rules — Kubernetes manifest security rules.
+# Technology: k8s | Capability: write
+# Covers: privileged containers, root UID, hostNetwork, resource limits, secrets in env.
+
+rule no-privileged-pod {
+  enabled true
+  priority 95
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content CONTAINS "privileged: true"
+  OR path GLOB "**/*.yml" AND content CONTAINS "privileged: true"
+  MESSAGE "Privileged pods have root access to the host kernel — equivalent to running as root on every node. Remove 'privileged: true' and use specific capabilities (securityContext.capabilities.add)."
+}
+
+rule no-run-as-root-uid {
+  enabled true
+  priority 90
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content LINE_REGEX "runAsUser:\\s*0"
+  OR path GLOB "**/*.yml" AND content LINE_REGEX "runAsUser:\\s*0"
+  MESSAGE "runAsUser: 0 runs the container as root. Set runAsNonRoot: true and specify a non-zero runAsUser (e.g., 1000) in the securityContext."
+}
+
+rule no-host-network {
+  enabled true
+  priority 90
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content CONTAINS "hostNetwork: true"
+  OR path GLOB "**/*.yml" AND content CONTAINS "hostNetwork: true"
+  MESSAGE "hostNetwork: true shares the host's network namespace, bypassing network policies. Remove it and use Service resources for inter-pod communication."
+}
+
+rule no-missing-resource-limits {
+  enabled true
+  priority 75
+  severity warning
+  ASK write
+  IF path GLOB "**/*.yaml" AND content CONTAINS "containers:" AND content NOT CONTAINS "limits:"
+  OR path GLOB "**/*.yml" AND content CONTAINS "containers:" AND content NOT CONTAINS "limits:"
+  MESSAGE "No resource limits defined. Without CPU and memory limits, a misbehaving container can starve the entire node. Add resources.limits.cpu and resources.limits.memory."
+  PROMPT "Does this manifest need resource limits? Without them, the pod can consume all available CPU/memory on the node, causing other workloads to fail."
+}
+
+rule no-secret-in-env-literal {
+  enabled true
+  priority 90
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content LINE_REGEX "value:\\s*['\"]?[A-Za-z0-9+/]{20,}['\"]?" AND content CONTAINS "env:"
+  OR path GLOB "**/*.yaml" AND content LINE_REGEX "- name:\\s*(PASSWORD|SECRET|TOKEN|API_KEY)"
+  MESSAGE "Secret value appears hardcoded in the manifest. Use secretKeyRef to reference a Kubernetes Secret instead: valueFrom.secretKeyRef.name/key"
+}
+
+rule no-latest-image-tag {
+  enabled true
+  priority 80
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content LINE_REGEX "image:\\s*\\S+:latest"
+  OR path GLOB "**/*.yml" AND content LINE_REGEX "image:\\s*\\S+:latest"
+  OR path GLOB "**/*.yaml" AND content LINE_REGEX "image:\\s*[a-z][a-z0-9/-]+$"
+  MESSAGE "Using ':latest' or no image tag makes deployments non-reproducible. Pin to a specific image digest or version tag."
+}

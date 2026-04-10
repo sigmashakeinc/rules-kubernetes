@@ -1,0 +1,42 @@
+# kubernetes_write_safety.rules
+# Technology: kubernetes | Capability: write
+
+rule k8s-privileged-container {
+  enabled true
+  priority 100
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content LINE_REGEX "privileged\\s*:\\s*true"
+  OR path GLOB "**/*.yml" AND content LINE_REGEX "privileged\\s*:\\s*true"
+  MESSAGE "Running Kubernetes pods with privileged: true allows the container to bypass nearly all security controls and access the host node. Do not use this unless absolutely required (e.g. for CNI plugins or node agents)."
+}
+
+rule k8s-run-as-root {
+  enabled true
+  priority 95
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content LINE_REGEX "runAsUser\\s*:\\s*0"
+  OR path GLOB "**/*.yml" AND content LINE_REGEX "runAsUser\\s*:\\s*0"
+  MESSAGE "Explicitly setting runAsUser: 0 forces a pod to run as the root user. This is a severe security risk. Set runAsNonRoot: true and specify an unprivileged user ID."
+}
+
+rule k8s-cluster-admin-rolebinding {
+  enabled true
+  priority 95
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content LINE_REGEX "roleRef\\s*:" AND content LINE_REGEX "name\\s*:\\s*cluster-admin"
+  OR path GLOB "**/*.yml" AND content LINE_REGEX "roleRef\\s*:" AND content LINE_REGEX "name\\s*:\\s*cluster-admin"
+  MESSAGE "Granting cluster-admin via RoleBinding or ClusterRoleBinding gives full control over the cluster. Avoid granting this except to core administrators. Use Least Privilege."
+}
+
+rule k8s-host-network {
+  enabled true
+  priority 90
+  severity error
+  DENY write
+  IF path GLOB "**/*.yaml" AND content LINE_REGEX "hostNetwork\\s*:\\s*true"
+  OR path GLOB "**/*.yml" AND content LINE_REGEX "hostNetwork\\s*:\\s*true"
+  MESSAGE "Using hostNetwork: true allows a pod to bind to the host's network interfaces, sniffing node traffic and bypassing network policies. This is extremely dangerous."
+}

@@ -1,0 +1,3 @@
+{
+  "description": "Kubernetes manifest governance rules for AI coding agents. Prevents privileged containers, root user execution, hardcoded secrets in env vars, wildcard RBAC, missing health probes, and untagged images — enforcing Kubernetes security best practices at the agent tool-call boundary."
+}
