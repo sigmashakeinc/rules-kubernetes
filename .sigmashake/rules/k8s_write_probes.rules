@@ -6,33 +6,30 @@ rule no-missing-liveness-probe {
   enabled true
   priority 75
   severity warning
-  ASK write
+  LOG write
   IF path GLOB "**/*.yaml" AND content CONTAINS "containers:" AND content NOT CONTAINS "livenessProbe:"
   OR path GLOB "**/*.yml" AND content CONTAINS "containers:" AND content NOT CONTAINS "livenessProbe:"
   MESSAGE "No liveness probe defined. Without a liveness probe, Kubernetes cannot restart containers stuck in a deadlock or infinite loop. Add livenessProbe with appropriate httpGet or exec check."
-  PROMPT "Does this container need a liveness probe? Without one, Kubernetes won't restart a deadlocked process — it only restarts on crash."
 }
 
 rule no-missing-readiness-probe {
   enabled true
   priority 80
   severity warning
-  ASK write
+  LOG write
   IF path GLOB "**/*.yaml" AND content CONTAINS "containers:" AND content NOT CONTAINS "readinessProbe:"
   OR path GLOB "**/*.yml" AND content CONTAINS "containers:" AND content NOT CONTAINS "readinessProbe:"
   MESSAGE "No readiness probe defined. Without a readiness probe, Kubernetes routes traffic to pods before they are ready to serve requests. Add readinessProbe to avoid serving errors during startup."
-  PROMPT "Does this container need a readiness probe? Without one, pods receive traffic before initialization completes, causing request failures."
 }
 
 rule no-host-port {
   enabled true
   priority 85
   severity warning
-  ASK write
+  LOG write
   IF path GLOB "**/*.yaml" AND content LINE_REGEX "hostPort:\\s*[0-9]+"
   OR path GLOB "**/*.yml" AND content LINE_REGEX "hostPort:\\s*[0-9]+"
   MESSAGE "hostPort binds the container directly to the host node's port, limiting scheduling to nodes where that port is free and bypassing network policies. Use a Service of type NodePort or LoadBalancer instead."
-  PROMPT "Does this workload need direct host port binding? Consider using a Service resource — hostPort also prevents multiple replicas from running on the same node."
 }
 
 rule no-aggressive-failure-threshold {

@@ -37,20 +37,18 @@ rule no-default-service-account {
   enabled true
   priority 75
   severity warning
-  ASK write
+  LOG write
   IF path GLOB "**/*.yaml" AND content CONTAINS "serviceAccountName: default"
   OR path GLOB "**/*.yml" AND content CONTAINS "serviceAccountName: default"
   MESSAGE "Using the default service account. Create a dedicated service account for each workload with only the permissions it needs."
-  PROMPT "Is this workload using the 'default' service account? Create a dedicated ServiceAccount with scoped RBAC — the default account is often over-permissioned."
 }
 
 rule no-automount-service-account-token {
   enabled true
   priority 80
   severity warning
-  ASK write
+  LOG write
   IF path GLOB "**/*.yaml" AND content CONTAINS "automountServiceAccountToken: true"
   OR path GLOB "**/*.yml" AND content CONTAINS "automountServiceAccountToken: true"
   MESSAGE "automountServiceAccountToken: true injects the service account token into every pod. If the workload doesn't call the Kubernetes API, set this to false to reduce the blast radius of a compromise."
-  PROMPT "Does this workload need to call the Kubernetes API? If not, set automountServiceAccountToken: false on the ServiceAccount or Pod spec."
 }

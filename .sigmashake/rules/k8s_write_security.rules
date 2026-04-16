@@ -36,11 +36,10 @@ rule no-missing-resource-limits {
   enabled true
   priority 75
   severity warning
-  ASK write
+  LOG write
   IF path GLOB "**/*.yaml" AND content CONTAINS "containers:" AND content NOT CONTAINS "limits:"
   OR path GLOB "**/*.yml" AND content CONTAINS "containers:" AND content NOT CONTAINS "limits:"
   MESSAGE "No resource limits defined. Without CPU and memory limits, a misbehaving container can starve the entire node. Add resources.limits.cpu and resources.limits.memory."
-  PROMPT "Does this manifest need resource limits? Without them, the pod can consume all available CPU/memory on the node, causing other workloads to fail."
 }
 
 rule no-secret-in-env-literal {
